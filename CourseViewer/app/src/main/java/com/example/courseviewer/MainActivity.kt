@@ -167,7 +167,7 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
 
     fun addClassOnClick(){
         val courseNumber = number.toIntOrNull()
-        print(courseNumber)
+        
         if(courseNumber != null && !department.isEmpty() && !loc.isEmpty()){
             vm.addCourse(department, courseNumber, loc)
             department = ""
