@@ -32,13 +32,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
@@ -164,7 +167,7 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
 
     fun addClassOnClick(){
         val courseNumber = number.toIntOrNull()
-
+        print(courseNumber)
         if(courseNumber != null && !department.isEmpty() && !loc.isEmpty()){
             vm.addCourse(department, courseNumber, loc)
             department = ""
@@ -181,14 +184,14 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
         }
     }
 
-
+    val scrollState = rememberScrollState()
 
     Box(modifier = Modifier.zIndex(10f)
         .background(color=Color.White, shape=RoundedCornerShape(12.dp)).width(300.dp).height(375.dp).padding(5.dp)
 
     , contentAlignment = Alignment.Center,
         ){
-        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly){
+        Column(modifier = Modifier.fillMaxWidth().verticalScroll(scrollState), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(15.dp)){
             Row{
                 OutlinedTextField(value = department,
                     onValueChange = {input: String -> department = input},
@@ -197,7 +200,11 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
             Row {
                 OutlinedTextField(keyboardOptions =  KeyboardOptions(keyboardType = KeyboardType.Number) ,
                     value = number,
-                    onValueChange={ input -> number = input},
+                    onValueChange={ input ->
+                        if(input.length <= 9 && input.all{it.isDigit()}){
+                            number = input
+                        }
+                    },
                     label = { Text("Number")}
                 )
             }
@@ -234,24 +241,39 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
  */
 @Composable
 fun CourseItem(course: Course, onEdit: (Course) -> Unit, onDelete: (Int) -> Unit){
-    Row(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical=10.dp)
-        .clickable{onEdit(course)}
-        .background(color=Color.LightGray, shape= RoundedCornerShape(6.dp))
-        , horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically){
-        Column(modifier = Modifier.padding(horizontal=5.dp)){
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)){
-                Text(course.dep)
-                Text(course.courseNum.toString())
-            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp)
+            .clickable { onEdit(course) }
+            .background(color = Color.LightGray, shape = RoundedCornerShape(6.dp)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = course.dep,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = 8.dp).weight(1f, false)
+            )
+            Text(
+                text = course.courseNum.toString(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Column(){
-            Button(
-                onClick = {onDelete(course.id)}
-            ) {
-                Icon(ChromeClose, contentDescription = "Delete Icon")
-            }
+
+        Button(
+            onClick = { onDelete(course.id) },
+            modifier = Modifier.padding(end = 8.dp)
+        ) {
+            Icon(ChromeClose, contentDescription = "Delete Icon")
         }
     }
 }
