@@ -48,50 +48,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.example.courseviewer.Database.Course
 
-
-/**
- * The data class for courses. Contains all the relevant info.
- * I included an ID to map the id of the course to the actual object so that courses can be editted.
- */
-data class Course(val dep: String, val courseNum: Number, val location: String, val id: Int);
-
-/**
- * The view model class. This is used to change data on the backend.
- * The views only use the readable data and never directly interact with the mutable collections.
- */
-class  CourseViewModel : ViewModel(){
-
-    //The mutable data that is changed with the functions below.
-    private val coursesMutable = MutableStateFlow<Map<Int, Course>>(emptyMap())
-
-    //The readable data that the views use
-    val coursesRO: StateFlow<Map<Int, Course>> = coursesMutable
-
-    //This is used to keep track of the current index so we don't overwrite courses
-    private var i: Int = 0;
-
-
-    fun addCourse(dep: String, courseNum: Int, location: String){
-        i += 1
-        coursesMutable.value  = coursesMutable.value.toMutableMap().apply{
-            put(i, Course(dep, courseNum, location, i))
-        }
-    }
-
-
-    fun deleteCourse(i: Int){
-        coursesMutable.value = coursesMutable.value.toMutableMap().apply{
-            remove(i)
-        }
-    }
-
-    fun editCourse(courseId: Int, dep: String, courseNum: Int, location: String){
-        coursesMutable.value = coursesMutable.value.toMutableMap().apply{
-            this[courseId] = Course(dep, courseNum, location, courseId)
-        }
-    }
-}
 
 
 /**
@@ -114,7 +72,7 @@ fun CourseApp(vm: CourseViewModel) {
         }
     }
 
-    val allowedCoursesMap by vm.coursesRO.collectAsState()
+    val courses by vm.courses.collectAsState()
 
     Column(
         Modifier
@@ -141,7 +99,7 @@ fun CourseApp(vm: CourseViewModel) {
 
         }
         Row{
-            CourseList(allowedCoursesMap.values, onEdit = {c -> popup = 1 to c}, onDelete = {id -> vm.deleteCourse(id)})
+            CourseList(courses, onEdit = {c -> popup = 1 to c}, onDelete = {course -> vm.deleteCourse(course)})
         }
 
     }
@@ -159,7 +117,7 @@ fun CourseApp(vm: CourseViewModel) {
  */
 @Composable
 fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType: Int, course: Course? = null){
-    var department by remember {mutableStateOf(course?.dep ?: "")}
+    var department by remember {mutableStateOf(course?.department ?: "")}
     var number by remember{mutableStateOf(course?.courseNum?.toString() ?: "")}
     var loc by remember {mutableStateOf(course?.location ?: "")}
 
@@ -178,8 +136,17 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
     }
 
     fun editClassOnClick(){
-        val courseNumber = number.toIntOrNull()?.let{
-            course?.let{c -> vm.editCourse(c.id, department, it, loc)}
+        val courseNumber = number.toIntOrNull()
+
+        if(course != null && courseNumber != null){
+            val updatedCourse = course!!.copy(
+                courseNum = courseNumber,
+                department = department,
+                location = loc
+            )
+
+
+            vm.editCourse(updatedCourse)
             turnOffScreen()
         }
     }
@@ -240,7 +207,7 @@ fun PopupCourseBox(turnOffScreen: () -> Unit, vm: CourseViewModel, functionType:
  * This component is used as the list option on the app.
  */
 @Composable
-fun CourseItem(course: Course, onEdit: (Course) -> Unit, onDelete: (Int) -> Unit){
+fun CourseItem(course: Course, onEdit: (Course) -> Unit, onDelete: (Course) -> Unit){
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -257,7 +224,7 @@ fun CourseItem(course: Course, onEdit: (Course) -> Unit, onDelete: (Int) -> Unit
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = course.dep,
+                text = course.department,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(end = 8.dp).weight(1f, false)
@@ -270,7 +237,7 @@ fun CourseItem(course: Course, onEdit: (Course) -> Unit, onDelete: (Int) -> Unit
         }
 
         Button(
-            onClick = { onDelete(course.id) },
+            onClick = { onDelete(course) },
             modifier = Modifier.padding(end = 8.dp)
         ) {
             Icon(ChromeClose, contentDescription = "Delete Icon")
@@ -288,7 +255,7 @@ fun CourseItem(course: Course, onEdit: (Course) -> Unit, onDelete: (Int) -> Unit
  * Will only display classes or courses that are within render frame.
  */
 @Composable
-fun CourseList(courses: Collection<Course>, onEdit: (Course) -> Unit, onDelete: (Int) -> Unit){
+fun CourseList(courses: List<Course>, onEdit: (Course) -> Unit, onDelete: (Course) -> Unit){
     if(courses.isEmpty()) {
         Text(text="Courses List is currently empty.", modifier= Modifier.padding(top=100.dp))
     }
@@ -307,7 +274,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ComposeDEMOTheme {
-                val vm: CourseViewModel = viewModel()
+                val vm: CourseViewModel = viewModel(factory=CourseViewModelProvider.Factory)
                 CourseApp(vm)
             }
         }
